@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+ Copyright 2016 The TensorFlow Authors. All Rights Reserved.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+-->
+
+<resources>
+    <string name="app_name">MR Demo/IFIP</string>
+
+    <string name="toggle_fast_debug">Fast Debug</string>
+    <string name="toggle_fixed">Fixed Apps</string>
+    <string name="toggle_network_debug">Remote Process</string>
+    <string name="toggle_thread">Thread Processes</string>
+    <string name="button_generate">Generate</string>
+    <string name="number_of_apps">App/s</string>
+    <string name="remote_url">Remote URL</string>
+    <string name="input_size">Size (e.g. 300)</string>
+
+    <string name="activity_name_mr_main">IFIP Revamped</string>
+    <string name="activity_name_mr_null">MR Null Activity</string>
+    <string name="activity_name_mr_demo_detection">MR Demo Detection</string>
+    <string name="activity_name_mr_ifip_detection">MR IFIP Detection</string>
+    <string name="activity_name_mr_demo_initialize">MR Demo Initialize</string>
+    <string name="activity_name_mr_detection_with_abstraction">MR Detection w/ Abstraction</string>
+    <string name="activity_mr_detection_with_network">MR Detection w/ Network</string>
+
+</resources>

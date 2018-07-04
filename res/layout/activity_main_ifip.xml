@@ -1,0 +1,220 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_margin="@dimen/margin_small">
+
+    <TextView
+        android:id="@+id/generate_textView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_small"
+        android:text="" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/margin_small"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/capture_size"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="6"
+            android:ems="4"
+            android:hint="@string/input_size"
+            android:inputType="number"
+            android:selectAllOnFocus="false"
+            android:singleLine="false"
+            android:textSize="14sp" />
+
+        <Spinner
+            android:id="@+id/mode_spinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="10"
+            android:textSize="14sp" />
+
+        <Switch
+            android:id="@+id/debug_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="@dimen/margin_small"
+            android:layout_weight="1"
+            android:checked="false"
+            android:onClick="onFastDebug"
+            android:splitTrack="false"
+            android:text="@string/toggle_fast_debug"
+            android:textColor="@android:color/darker_gray"
+            android:textAlignment="textEnd"
+            tools:checked="false" />
+
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/margin_small"
+        android:orientation="horizontal">
+
+        <EditText
+            android:id="@+id/remote_url"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="4"
+            android:ems="8"
+            android:hint="@string/remote_url"
+            android:inputType="textUri"
+            android:selectAllOnFocus="false"
+            android:singleLine="false"
+            android:textSize="14sp" />
+
+        <Switch
+            android:id="@+id/network_toggle"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="@dimen/margin_small"
+            android:layout_weight="3"
+            android:checked="false"
+            android:ems="5"
+            android:onClick="onNetworkProcess"
+            android:splitTrack="false"
+            android:text="@string/toggle_network_debug"
+            android:textColor="@android:color/darker_gray"
+            tools:checked="false" />
+
+    </LinearLayout>
+    <!--
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/number_of_apps"
+                android:layout_width="50dp"
+                android:layout_height="match_parent"
+                android:layout_marginLeft="@dimen/margin_small"
+                android:layout_weight="1"
+                android:ems="10"
+                android:hint="@string/number_of_apps"
+                android:inputType="number"
+                android:selectAllOnFocus="false"
+                android:singleLine="false"
+                android:textSize="14sp" />
+
+            <Button
+                android:id="@+id/generate_app_list"
+                android:layout_width="100dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="2"
+                android:onClick="generateAppList"
+                android:text="@string/button_generate"
+                android:textSize="14sp" />
+
+            <Space
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_weight="4" />
+
+            <Switch
+                android:id="@+id/fixed_apps_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/margin_small"
+                android:layout_weight="1"
+                android:checked="false"
+                android:onClick="onFixedApps"
+                android:splitTrack="false"
+                android:text="@string/toggle_fixed"
+                android:textColor="@android:color/darker_gray"
+                tools:checked="false" />
+
+            <Switch
+                android:id="@+id/debug_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/margin_small"
+                android:layout_weight="1"
+                android:checked="false"
+                android:onClick="onFastDebug"
+                android:splitTrack="false"
+                android:text="@string/toggle_fast_debug"
+                android:textColor="@android:color/darker_gray"
+                tools:checked="false" />
+
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/mr_null"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/margin_small"
+            android:layout_weight="1"
+            android:onClick="mrNullIntent"
+            android:text="@string/activity_name_mr_null" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="@dimen/margin_small"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/mr_detection"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/margin_small"
+                android:layout_weight="10"
+                android:onClick="mrDetectionIntent"
+                android:text="@string/activity_name_mr_demo_detection" />
+
+            <Switch
+                android:id="@+id/thread_toggle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginEnd="@dimen/margin_small"
+                android:layout_weight="1"
+                android:checked="false"
+                android:onClick="onThread"
+                android:splitTrack="false"
+                android:text="@string/toggle_thread"
+                android:textColor="@android:color/darker_gray"
+                tools:checked="false" />
+
+        </LinearLayout>-->
+    <Button
+        android:id="@+id/mr_ifip_detection"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_small"
+        android:onClick="mrIfipDetectionIntent"
+        android:text="@string/activity_name_mr_ifip_detection" />
+
+    <Button
+        android:id="@+id/mr_detection_initialize"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_small"
+        android:onClick="mrDemoInitializeIntent"
+        android:text="@string/activity_name_mr_demo_initialize" />
+
+    <Button
+        android:id="@+id/mr_detection_with_network"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/margin_small"
+        android:onClick="mrDetectionIntentWithSharing"
+        android:text="@string/activity_mr_detection_with_network" />
+
+    <ListView
+        android:id="@+id/listview"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:scrollbars="vertical" />
+
+</LinearLayout>
