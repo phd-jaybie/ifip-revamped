@@ -1,11 +1,18 @@
 package org.tensorflow.ifip.phd;
 
 /**
- * Created by deg032 on 4/7/18.
+ * Created by deg032 on 5/2/18.
  *
- * This activity is a modification of the original TF code to be used for experimental measurements.
+ * This is the first attempt to create a 'local' abstraction overlay that presents an object-level
+ * fine-grained access control.
+ *
+ * [6-Feb-2018] Now, utilizing an objectManager that handles live detected objects and which
+ * currently running apps have access to them.
  */
 
+import android.app.AlertDialog;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -16,7 +23,8 @@ import android.graphics.Paint.Style;
 import android.graphics.Path;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.media.ImageReader.OnImageAvailableListener;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.SystemClock;
 import android.util.Size;
 import android.util.TypedValue;
@@ -34,6 +42,7 @@ import org.tensorflow.ifip.augmenting.Augmenter;
 import org.tensorflow.ifip.env.BorderedText;
 import org.tensorflow.ifip.env.ImageUtils;
 import org.tensorflow.ifip.env.Logger;
+import org.tensorflow.ifip.network.RemoteDetector;
 import org.tensorflow.ifip.phd.detector.cv.CvDetector;
 import org.tensorflow.ifip.phd.detector.cv.OrbDetector;
 import org.tensorflow.ifip.phd.detector.cv.SiftDetector;
@@ -49,9 +58,10 @@ import java.util.Vector;
 
 /**
  * An activity that follows Tensorflow's demo DetectorActivity class as template and implements
- * classical visual detection using OpenCV in addition to the TF (OD) detection.
+ * classical visual detection using OpenCV.
  */
-public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageAvailableListener {
+public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
+
     private static final Logger LOGGER = new Logger();
 
     private int captureCount = 0;
@@ -90,8 +100,14 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
     private enum DetectorMode {
         TF_OD_API, MULTIBOX, YOLO;
     }
-
     private static final DetectorMode MODE = DetectorMode.TF_OD_API;
+
+    // Minimum detection confidence to track a detection.
+    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
+    private static final float MINIMUM_CONFIDENCE_MULTIBOX = 0.1f;
+    private static final float MINIMUM_CONFIDENCE_YOLO = 0.25f;
+
+    private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.YOLO;
 
     // Configuration values for the regular non-boxing classifier.
     private static final int INPUT_SIZE = 224;
@@ -104,13 +120,6 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
     private static final String LABEL_FILE =
             "file:///android_asset/imagenet_comp_graph_label_strings.txt";
 
-    // Minimum detection confidence to track a detection.
-    private static final float MINIMUM_CONFIDENCE_TF_OD_API = 0.6f;
-    private static final float MINIMUM_CONFIDENCE_MULTIBOX = 0.1f;
-    private static final float MINIMUM_CONFIDENCE_YOLO = 0.25f;
-
-    private static final boolean MAINTAIN_ASPECT = MODE == DetectorMode.YOLO;
-
     private static final Size DESIRED_PREVIEW_SIZE = new Size(640, 480);
 
     private static final boolean SAVE_PREVIEW_BITMAP = false;
@@ -120,6 +129,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
     private Classifier detector; //for TF detection
     private Classifier classifier; //for TF classification
+    private Classifier remoteDetector;
     private SiftDetector siftDetector; //for OpenCV detection
     private OrbDetector orbDetector;
 
@@ -169,62 +179,55 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
         inputSizeHeight = size.getHeight();
         inputSize = Math.min(inputSizeWidth, inputSizeHeight);
 
-        tracker = new MultiBoxTracker(this);
+        LOGGER.i("onPreviewSizeChosen: operatingMode = " + operatingMode);
 
-        //For non-CV tracking, comment out the line below.
+        tracker = new MultiBoxTracker(this);
         augmenter = new Augmenter();
 
         // setting up a TF detector (a TF OD type)
         int cropSize = TF_OD_API_INPUT_SIZE;
-
-        if (MODE == DetectorMode.YOLO) {
-             detector =
-                     TensorFlowYoloDetector.create(
-                             getAssets(),
-                             YOLO_MODEL_FILE,
-                             inputSize, //YOLO_INPUT_SIZE,
-                             YOLO_INPUT_NAME,
-                             YOLO_OUTPUT_NAMES,
-                             YOLO_BLOCK_SIZE);
-             cropSize = YOLO_INPUT_SIZE;
-        } else if (MODE == DetectorMode.MULTIBOX) {
-             detector =
-                     TensorFlowMultiBoxDetector.create(
-                             getAssets(),
-                             MB_MODEL_FILE,
-                             MB_LOCATION_FILE,
-                             MB_IMAGE_MEAN,
-                             MB_IMAGE_STD,
-                             MB_INPUT_NAME,
-                             MB_OUTPUT_LOCATIONS_NAME,
-                             MB_OUTPUT_SCORES_NAME);
-             cropSize = MB_INPUT_SIZE;
-             LOGGER.i("Created detector using Multi-box Detector");
+        if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.YOLO) {
+            detector =
+                    TensorFlowYoloDetector.create(
+                            getAssets(),
+                            YOLO_MODEL_FILE,
+                            inputSize,//YOLO_INPUT_SIZE,
+                            YOLO_INPUT_NAME,
+                            YOLO_OUTPUT_NAMES,
+                            YOLO_BLOCK_SIZE);
+            inputSize = YOLO_INPUT_SIZE;
+        } else if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.MULTIBOX) {
+            detector =
+                    TensorFlowMultiBoxDetector.create(
+                            getAssets(),
+                            MB_MODEL_FILE,
+                            MB_LOCATION_FILE,
+                            MB_IMAGE_MEAN,
+                            MB_IMAGE_STD,
+                            MB_INPUT_NAME,
+                            MB_OUTPUT_LOCATIONS_NAME,
+                            MB_OUTPUT_SCORES_NAME);
+            inputSize = MB_INPUT_SIZE;
         } else {
-             try {
-                 detector = TensorFlowObjectDetectionAPIModel.create(
-                         getAssets(),
-                         TF_OD_API_MODEL_FILE,
-                         TF_OD_API_LABELS_FILE,
-                         inputSize//TF_OD_API_INPUT_SIZE
-                 );
-                 cropSize = TF_OD_API_INPUT_SIZE;
-                 LOGGER.i("Created detector using Object Detector");
-             } catch (final IOException e) {
-                 LOGGER.e("Exception initializing classifier!", e);
-                 Toast toast =
-                         Toast.makeText(
-                                 getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
-                 toast.show();
-                 finish();
-             }
+            try {
+                detector = TensorFlowObjectDetectionAPIModel.create(
+                        getAssets(),
+                        TF_OD_API_MODEL_FILE,
+                        TF_OD_API_LABELS_FILE,
+                        inputSize//TF_OD_API_INPUT_SIZE
+                );
+            } catch (final IOException e) {
+                LOGGER.e("Exception initializing classifier!", e);
+                Toast toast =
+                        Toast.makeText(
+                                getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
+                toast.show();
+                finish();
+            }
         }
 
-        orbDetector = new OrbDetector();
-        siftDetector = new SiftDetector();
-
-        // setting up a TF classifier
-       /* classifier =
+        /*// setting up a TF classifier
+        classifier =
                 TensorFlowImageClassifier.create(
                         getAssets(),
                         MODEL_FILE,
@@ -234,6 +237,16 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         IMAGE_STD,
                         INPUT_NAME,
                         OUTPUT_NAME);*/
+
+        /**
+         * Inserted the line below for the OpenCV Detector.
+         */
+
+        siftDetector = new SiftDetector();
+        orbDetector = new OrbDetector();
+
+        if (NetworkMode.equals("REMOTE_PROCESS"))
+            remoteDetector = RemoteDetector.create(remoteUrl, operatingMode);
 
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
@@ -285,7 +298,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                 });
 
         /**
-         * This following addCallback is declared in the MrThreadedCameraActivity class and is another method
+         * This following addCallback is declared in the CameraActivity class and is another method
          * implementation of the addCallback from the OverlayView. Also, this is the one that
          * draws on the debug_overlay, whereas the previous one is for the tracking_overlay.
          */
@@ -323,7 +336,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         lines.add("");
 
                         lines.add("Running " + singletonAppList.getList().size() + " apps");
-                        lines.add("Frame: " + previewWidth + "x" + previewHeight);
+                        lines.add("Preview Frame: " + previewWidth + "x" + previewHeight);
                         lines.add("Processed Frame: " + inputSize + "x" + inputSize);
                         lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
                         lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
@@ -348,9 +361,37 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         augmenter.drawAugmentations(canvas);
                     }
                 });
+
     }
 
-    @Override
+    private void sharedAbstraction(){
+        //if (isNetworkConnected())
+            manager.
+                refreshListFromNetwork(mNetworkFragment,receiveFlag);
+        //else manager.refreshList();
+    }
+
+
+    private boolean isNetworkConnected() {
+        ConnectivityManager connMgr = (ConnectivityManager)
+                getSystemService(Context.CONNECTIVITY_SERVICE); // 1
+        NetworkInfo networkInfo = connMgr.getActiveNetworkInfo(); // 2
+        return networkInfo != null && networkInfo.isConnected(); // 3
+    }
+
+    private void noConnection(){
+        new AlertDialog.Builder(this)
+                .setTitle("No Internet Connection")
+                .setMessage("It looks like your internet connection is off. Please turn it " +
+                        "on and try again")
+                .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                    }
+                }).setIcon(android.R.drawable.ic_dialog_alert).show();
+    }
+
+
+    @Override // part of MrCameraActivity
     protected void processImage() {
 
 /*        if (captureCount >= CAPTURE_TIMEOUT) {
@@ -375,27 +416,30 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
             for (long d : detectionTimes) sum += d;
             double averageDetection = 1.0d * sum / detectionTimes.length;
 
-            LOGGER.i("DataGatheringAverage, %d, %d, %f, %f, %d",
-                    appList.size(),inputSize, averageOverall, averageDetection,
-                    utilityHit);
-            if (logWriter!=null) {
+            LOGGER.i("DataGatheringAverage, %d, %d, %d, %f, %f",
+                    captureCount, appList.size(),inputSize, averageOverall, averageDetection);
 
-                try{
+/*            if (logWriter!=null) {
+                try {
                     logWriter.write("DataGathering," + captureCount +","
                             + appList.size() + "," + inputSize +"," + averageOverall + ","
                             + averageDetection);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
-            }
+            }*/
+
+
             return;
         }
+
 
         ++timestamp;
         final long currTimestamp = timestamp;
         byte[] originalLuminance = getLuminance();
-        //final byte[] mBytes = getLuminance();//getImageMat();
 
+        // Usually, this onFrame method below doesn't really happen as you would see in the toast
+        // message that appears when you start up this detector app.
         tracker.onFrame(
                 previewWidth,
                 previewHeight,
@@ -410,15 +454,17 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
             readyForNextImage();
             return;
         }
+
         computingDetection = true;
         LOGGER.i("Preparing image " + currTimestamp + " for detection in bg thread.");
 
         rgbFrameBitmap.setPixels(getRgbBytes(), 0, previewWidth, 0, 0, previewWidth, previewHeight);
-        inputBitmap = Bitmap.createScaledBitmap(rgbFrameBitmap,inputSize,inputSize,true); //Bitmap.createBitmap(rgbFrameBitmap);
+        inputBitmap = Bitmap.createScaledBitmap(rgbFrameBitmap,inputSize, inputSize,true);
 
         if (luminanceCopy == null) {
             luminanceCopy = new byte[originalLuminance.length];
         }
+
         System.arraycopy(originalLuminance, 0, luminanceCopy, 0, originalLuminance.length);
         readyForNextImage();
 
@@ -435,7 +481,6 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                     @Override
                     public void run() {
 
-                        //final String operatingMode = getIntent().getStringExtra("OperatingMode");
                         cropCopyBitmap = Bitmap.createBitmap(croppedBitmap);
                         final Canvas canvas = new Canvas(cropCopyBitmap);
                         final Paint paint = new Paint();
@@ -456,50 +501,47 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                 break;
                         }
 
-                        // final list of recognitions before rendering ot the trackingOverlayView
+                        // final list of recognitions before rendering to the trackingOverlayView
                         final List<Classifier.Recognition> mappedRecognitions =
                                 new LinkedList<>();
 
                         LOGGER.i("Running detection on image " + currTimestamp);
                         final long startTime = SystemClock.uptimeMillis();
-                        long detectionTime = 0;
+                        long detectionTime = 0;//SystemClock.uptimeMillis() - startTime;
                         long begin = 0;
 
-                        // This for-loop below performs detection and transformation for each
-                        // concurrent app that's running. Furthermore, the detection process can be
-                        // performed remotely (instead of locally) by an app's associated remote
-                        // supporting servers.
+                        // This for-loop below performs *detection* AND *transformation* for each
+                        // concurrent app that's running.
                         for (final App app : appList) {
 
                             LOGGER.i("Doing app: " + app.toString());
-
                             long detect1 = 0;
+
+                            // Implementation of Local Abstraction in Detection: TF and CV
+                            List<Classifier.Recognition> dResults = new ArrayList<>();
+
+                            CvDetector.QueryImage sResult = new CvDetector.QueryImage();
+                            CvDetector.QueryImage oResult = new CvDetector.QueryImage();
+
+                            //getting objects of Interest of an app
+                            List<String> objectsOfInterest = Arrays.asList(app.getObjectsOfInterest());
 
                             final List<Classifier.Recognition> appResults =
                                     new LinkedList<>(); // collection of results per app
-                            List<String> objectsOfInterest = Arrays.asList(app.getObjectsOfInterest());
 
                             Integer localHit = 0;
                             Integer localSecrecyHit = 0;
 
-                            List<Classifier.Recognition> results = new ArrayList<>();
+                            if (NetworkMode.equals("REMOTE_PROCESS")) {
+                                LOGGER.d("Detection done remotely.");
 
-                            CvDetector.Recognition result = new CvDetector.Recognition();
-                            Path locationPath;
-                            RectF locationRectF;
+                                begin = SystemClock.uptimeMillis();
+                                dResults = remoteDetector.recognizeImage(inputBitmap);
+                                detect1 = SystemClock.uptimeMillis()-begin;
 
-                            Classifier.Recognition cvDetection;
-
-                            switch (operatingMode) {
-
-                                case "TF":
-
-                                    begin = SystemClock.uptimeMillis();
-                                    results = detector.recognizeImage(inputBitmap); // no classifier
-                                    detect1 = SystemClock.uptimeMillis()-begin;
-
+                                if (dResults != null) {
                                     //transformation
-                                    for (final Classifier.Recognition dResult : results) {
+                                    for (final Classifier.Recognition dResult : dResults) {
                                         final RectF location = dResult.getLocation();
                                         if (location != null && dResult.getConfidence() >= minimumConfidence) {
                                             inputToCropTransform.mapRect(location);
@@ -521,65 +563,118 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                         }
                                     }
 
-                                    break;
+                                } // if null, no result. No transformation.
 
-                                case "SIFT":
+                            } else {
+                                LOGGER.d("Detection done locally.");
 
-                                    begin = SystemClock.uptimeMillis();
+                                /**
+                                 * Abstraction-style processing: will perform all necessary processing
+                                 * as specified by the task list (i.e. app list).
+                                 */
+                                /*if (appListText.contains("TF"))
+                                    dResults = detector.recognizeImage(inputBitmap);
+                                if (appListText.contains("SIFT"))
+                                    sResult = siftDetector.imageDetector(inputBitmap);
+                                if (appListText.contains("ORB"))
+                                    oResult = orbDetector.imageDetector(inputBitmap);*/
 
-                                    result = siftDetector.imageDetector(inputBitmap, app.getReference());
+                                List<Classifier.Recognition> results = new ArrayList<>();
 
-                                    detect1 = SystemClock.uptimeMillis()-begin;
+                                CvDetector.Recognition result = new CvDetector.Recognition();
+                                Path locationPath;
+                                RectF locationRectF;
 
-                                    if (result == null) break;
+                                Classifier.Recognition cvDetection;
 
-                                    localHit = 1;
+                                switch (operatingMode) {
 
-                                    result.setTitle(app.getName());
+                                    case "TF":
 
-                                    locationPath = result.getLocation().first;
-                                    locationPath.transform(inputToCropTransform);
-                                    canvas.drawPath(locationPath, paint);
+                                        begin = SystemClock.uptimeMillis();
+                                        results = detector.recognizeImage(inputBitmap); // no classifier
+                                        detect1 = SystemClock.uptimeMillis()-begin;
 
-                                    locationRectF = result.getLocation().second;
-                                    inputToCropTransform.mapRect(locationRectF);
-                                    cropToFrameTransform.mapRect(locationRectF);
+                                        //transformation
+                                        for (final Classifier.Recognition dResult : results) {
+                                            final RectF location = dResult.getLocation();
+                                            if (location != null && dResult.getConfidence() >= minimumConfidence) {
+                                                inputToCropTransform.mapRect(location);
+                                                canvas.drawRect(location, paint);
 
-                                    cvDetection = new Classifier.
-                                            Recognition(app.getMethod().second, result.getTitle(),
-                                            minimumConfidence, result.getLocation().second);
-                                    appResults.add(cvDetection);
+                                                if (Arrays.asList(secretObjects).contains(dResult.getTitle())){
+                                                    localSecrecyHit = 1;
+                                                    //continue; //Don't overlay if object is secret.
+                                                } else if (objectsOfInterest.contains(dResult.getTitle())){ // case 3
+                                                    localHit = 1;
+                                                }
 
-                                    break;
+                                                cropToFrameTransform.mapRect(location);
+                                                dResult.setLocation(location);
+                                                appResults.add(dResult);
 
-                                case "ORB":
+                                                //localHit = 1;
 
-                                    begin = SystemClock.uptimeMillis();
+                                            }
+                                        }
 
-                                    result = orbDetector.imageDetector(inputBitmap, app.getReference());
+                                        break;
 
-                                    detect1 = SystemClock.uptimeMillis()-begin;
+                                    case "SIFT":
 
-                                    if (result == null) break;
+                                        begin = SystemClock.uptimeMillis();
+                                        result = siftDetector.imageDetector(inputBitmap, app.getReference());
+                                        detect1 = SystemClock.uptimeMillis()-begin;
 
-                                    localHit = 1;
+                                        if (result == null) break;
 
-                                    result.setTitle(app.getName());
+                                        localHit = 1;
 
-                                    locationPath = result.getLocation().first;
-                                    locationPath.transform(inputToCropTransform);
-                                    canvas.drawPath(locationPath, paint);
+                                        result.setTitle(app.getName());
 
-                                    locationRectF = result.getLocation().second;
-                                    inputToCropTransform.mapRect(locationRectF);
-                                    cropToFrameTransform.mapRect(locationRectF);
+                                        locationPath = result.getLocation().first;
+                                        locationPath.transform(inputToCropTransform);
+                                        canvas.drawPath(locationPath, paint);
 
-                                    cvDetection = new Classifier.
-                                            Recognition(app.getMethod().second, result.getTitle(),
-                                            minimumConfidence, result.getLocation().second);
-                                    appResults.add(cvDetection);
+                                        locationRectF = result.getLocation().second;
+                                        inputToCropTransform.mapRect(locationRectF);
+                                        cropToFrameTransform.mapRect(locationRectF);
 
-                                    break;
+                                        cvDetection = new Classifier.
+                                                Recognition(app.getMethod().second, result.getTitle(),
+                                                minimumConfidence, result.getLocation().second);
+                                        appResults.add(cvDetection);
+
+                                        break;
+
+                                    case "ORB":
+
+                                        begin = SystemClock.uptimeMillis();
+                                        result = orbDetector.imageDetector(inputBitmap, app.getReference());
+                                        detect1 = SystemClock.uptimeMillis()-begin;
+
+                                        if (result == null) break;
+
+                                        localHit = 1;
+
+                                        result.setTitle(app.getName());
+
+                                        locationPath = result.getLocation().first;
+                                        locationPath.transform(inputToCropTransform);
+                                        canvas.drawPath(locationPath, paint);
+
+                                        locationRectF = result.getLocation().second;
+                                        inputToCropTransform.mapRect(locationRectF);
+                                        cropToFrameTransform.mapRect(locationRectF);
+
+                                        cvDetection = new Classifier.
+                                                Recognition(app.getMethod().second, result.getTitle(),
+                                                minimumConfidence, result.getLocation().second);
+                                        appResults.add(cvDetection);
+
+                                        break;
+
+                                }
 
                             }
 
@@ -621,9 +716,8 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                         final long overallTime = SystemClock.uptimeMillis() - startTime;
 
-                        LOGGER.i("DataGathering, %s, %d, %d, %d, %d, %d", //%d, %d",
-                                operatingMode, captureCount, appList.size(),inputSize, overallTime, detectionTime);
-                                //utilityHit, secrecyHit);
+                        LOGGER.i("DataGathering, %s_%s, %d, %d, %d, %d, %d", //%d, %d",
+                                operatingMode, NetworkMode, captureCount, appList.size(),inputSize, overallTime, detectionTime);
 
                         if (fastDebug) {
                             overallTimes[captureCount] = overallTime;
@@ -631,7 +725,6 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         }
 
 /*                        if (logWriter!=null) {
-
                             try {
                                 logWriter.write("DataGathering," + captureCount +","
                                         + appList.size() + "," + inputSize +"," + overallTime + ","
@@ -641,9 +734,12 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                             }
                         }*/
 
+
                         ++captureCount;
                     }
                 });
+
+        //sharedAbstraction();
 
     }
 

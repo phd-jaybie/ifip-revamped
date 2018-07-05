@@ -34,6 +34,7 @@ import org.tensorflow.ifip.initializer.ObjectReferenceList;
 import org.tensorflow.ifip.initializer.ReferenceObject;
 import org.tensorflow.ifip.phd.MrDetectorActivity;
 import org.tensorflow.ifip.phd.MrIfipDetectorActivity;
+import org.tensorflow.ifip.phd.MrIfipDetectorActivityWithNetwork;
 import org.tensorflow.ifip.phd.MrInitializeDemoDetectorActivity;
 import org.tensorflow.ifip.phd.MrNullActivity;
 import org.tensorflow.ifip.phd.MrThreadedDemoDetectorActivity;
@@ -91,7 +92,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private boolean FastDebug = false;
     private boolean Threading = false;
     private boolean FixedApps = false;
-    private String remoteUrl = null;
+    private String remoteUrl = "";
     private int inputSize = 500;
 
     public final String firstMessage = "Generate App list first.";
@@ -100,9 +101,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private static TaskStackBuilder backStack;
 
     static {
-        LOGGER.i("DataGatheringAverage, Image, Number of Apps, Frame Size, " +
+/*        LOGGER.i("DataGatheringAverage, Image, Number of Apps, Frame Size, " +
                 "Overall Frame Processing (ms), Detection Time (ms), " +
-                "Number of hits, Secret hits (, Latent Privacy Hit) ");
+                "Number of hits, Secret hits (, Latent Privacy Hit) ");*/
 
         if(!OpenCVLoader.initDebug()){
             LOGGER.d("OpenCV not loaded");
@@ -522,8 +523,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
         if (!checkList()) generateFixedApps(1); //return; is default
 
-        Intent detectorIntent = new Intent(this, ProtectedMrDetectorActivityWithNetwork.class);
+        Intent detectorIntent = new Intent(this, MrIfipDetectorActivityWithNetwork.class);
         detectorIntent.putExtra("NetworkMode",NetworkMode);
+        detectorIntent.putExtra("OperatingMode", operatingMode);
         detectorIntent.putExtra("RemoteURL",remoteUrl);
         detectorIntent.putExtra("InputSize", inputSize);
         detectorIntent.putExtra("FastDebug", FastDebug);

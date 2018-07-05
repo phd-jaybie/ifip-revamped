@@ -33,13 +33,15 @@ public class RemoteDetector implements Classifier {
 
     // This is the network fragment that handles all network activity/functions.
     private static NetworkFragment mNetworkFragment;
+    private static String operatingMode = "SIFT";
 
-    public static RemoteDetector create(String remoteUrl) {
+    public static RemoteDetector create(String remoteUrl, String detectionMode) {
         final RemoteDetector detector = new RemoteDetector();
 
-        //urlString = "http://" + remoteUrl + ":8081"; // for user-input URL
-        //urlString = "http://150.229.118.204:8081"; // co-located edge server
-        urlString = "http://13.211.118.53:8081"; // remote cloud server
+        urlString = "http://" + remoteUrl + ":8081"; // for user-input URL
+        operatingMode = detectionMode;
+        if (remoteUrl.isEmpty()) urlString = "http://150.229.118.255:8081"; // co-located edge server
+        //urlString = "http://13.211.118.53:8081"; // remote cloud server
 
         return detector;
     }
@@ -68,6 +70,7 @@ public class RemoteDetector implements Classifier {
             conn.setRequestProperty("Accept-Encoding", "identity");
             conn.setRequestProperty("Connection", "Keep-Alive");
             conn.setRequestProperty("Content-type", "image/jpeg");
+            conn.setRequestProperty("Detection-mode", operatingMode);
             conn.addRequestProperty("Content-length", byteArray.length + "");
 
             //conn.connect();

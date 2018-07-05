@@ -233,7 +233,7 @@ public class ProtectedMrDetectorActivityWithNetwork extends MrCameraActivity {
         siftDetector = new SiftDetector();
         orbDetector = new OrbDetector();
         if (NetworkMode.equals("REMOTE_PROCESS"))
-            remoteDetector = RemoteDetector.create(remoteUrl);
+            remoteDetector = RemoteDetector.create(remoteUrl, operatingMode);
 
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();

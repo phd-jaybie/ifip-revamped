@@ -98,6 +98,9 @@ public abstract class MrCameraActivity extends FragmentActivity
   protected static int inputSize = 300; // default to default crop size
   protected static String operatingMode = "SIFT"; //default to SIFT
 
+  protected static int inputSizeWidth;
+  protected static int inputSizeHeight;
+
   private Runnable postInferenceCallback;
   private Runnable imageConverter;
 
@@ -106,9 +109,9 @@ public abstract class MrCameraActivity extends FragmentActivity
   protected AssetManager mAssets;
 
   // This is used by the MrCameraActivity child with networking.
-  protected static String NetworkMode;
-  protected static String remoteUrl;
-  protected static boolean fastDebug;
+  protected static String NetworkMode = "";
+  protected static String remoteUrl = "";
+  protected static boolean fastDebug = false;
 
   // This is the Global object manager for MrObjects.
   protected static MrObjectManager manager;
@@ -197,22 +200,22 @@ public abstract class MrCameraActivity extends FragmentActivity
 
     NetworkMode = getIntent().getStringExtra("NetworkMode");
 
-    /*try {
+    try {
       if (NetworkMode.equals("REMOTE_PROCESS")) {
         LOGGER.i("NetworkMode: " + NetworkMode);
         remoteUrl = getIntent().getStringExtra("RemoteURL");
       }
 
       mNetworkFragment = NetworkFragment.getInstance(getSupportFragmentManager(), "http://"+ remoteUrl +":8081");
-      *//**
+      /**
        * These two lines of code below is for object sharing which we won't do now for the revamped
        * IFIP measurement experiments.
-       *//*
+      **/
       //mNetworkFragment.startServer(8081, mAssets);
       //mNetworkFragment.setServerListener(this);
     } catch(Exception e) {
       e.printStackTrace();
-    }*/
+    }
 
 
     //LOGGER.i("DataGathering, Image, Number of Apps, Frame Size, Overall Frame Processing (ms), Detection Time (ms), Number of hits");
