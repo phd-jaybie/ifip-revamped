@@ -35,6 +35,7 @@ import org.tensorflow.ifip.initializer.ReferenceObject;
 import org.tensorflow.ifip.phd.MrDetectorActivity;
 import org.tensorflow.ifip.phd.MrIfipDetectorActivity;
 import org.tensorflow.ifip.phd.MrIfipDetectorActivityWithNetwork;
+import org.tensorflow.ifip.phd.MrIfipNullActivity;
 import org.tensorflow.ifip.phd.MrInitializeDemoDetectorActivity;
 import org.tensorflow.ifip.phd.MrNullActivity;
 import org.tensorflow.ifip.phd.MrThreadedDemoDetectorActivity;
@@ -81,6 +82,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     private Switch fixedAppsSwitch; // This switch just tells the app randomizer to create a fixed set of apps.
     private Switch networkSwitch; // This switch just tells whether the detection is local or remote.
     private Spinner modeSpinner;
+    private Spinner remoteSpinner;
 
     /**
      * Variable @operatingMode default is SIFT.
@@ -88,12 +90,13 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
      */
     private static String operatingMode = "SIFT";
 
-    private String NetworkMode = "LOCAL";
+    private String NetworkMode = "REMOTE_PROCESS"; // default to remote when Network activity is clicked.
     private boolean FastDebug = false;
     private boolean Threading = false;
     private boolean FixedApps = false;
     private String remoteUrl = "";
     private int inputSize = 500;
+    private String RemoteMode = "Co-located";
 
     public final String firstMessage = "Generate App list first.";
     public final String firstMessageDemo= "Initialize object references first.";
@@ -187,10 +190,18 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         modeSpinner = (Spinner) findViewById(R.id.mode_spinner);
         modeSpinner.setOnItemSelectedListener(this);
 
+        remoteSpinner = (Spinner) findViewById(R.id.remote_spinner);
+        remoteSpinner.setOnItemSelectedListener(this);
+
         ArrayAdapter<CharSequence> modeAdapter = ArrayAdapter.createFromResource(this,
                 R.array.mode_array, android.R.layout.simple_spinner_item);
         modeAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         modeSpinner.setAdapter(modeAdapter);
+
+        ArrayAdapter<CharSequence> remoteAdapter = ArrayAdapter.createFromResource(this,
+                R.array.remote_array, android.R.layout.simple_spinner_item);
+        remoteAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        remoteSpinner.setAdapter(remoteAdapter);
 
         listview = (ListView) findViewById(R.id.listview);
 
@@ -222,28 +233,56 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
     @Override
     public void onItemSelected(AdapterView<?> parent, View view, int pos, long id) {
 
-        if (pos == 0) {
-            //do nothing, first item is a hint
-            return;
-        } else {
-            String sMode = parent.getItemAtPosition(pos).toString();
-            switch(sMode){
-                case "SIFT":
-                    operatingMode = "SIFT";
-                    break;
-                case "ORB":
-                    operatingMode = "ORB";
-                    break;
-                case "TF":
-                    operatingMode = "TF";
-                    break;
-                default:
-                    operatingMode = "SIFT";
-                    break;
-            }
-            // Showing selected spinner item
-            Toast.makeText(parent.getContext(), "Selected Mode: " + sMode, Toast.LENGTH_LONG).show();
+/*    if (pos == 0) {
+        //do nothing, first item is a hint
+        return;
+    } else {*/
+        switch (parent.getId()) {
+            case R.id.mode_spinner:
+                String sMode = parent.getItemAtPosition(pos).toString();
+                switch (sMode) {
+                    case "SIFT":
+                        operatingMode = "SIFT";
+                        break;
+                    case "ORB":
+                        operatingMode = "ORB";
+                        break;
+                    case "TF":
+                        operatingMode = "TF";
+                        break;
+                    case "MARKER":
+                        operatingMode = "MARKER";
+                        break;
+                    default:
+                        operatingMode = "SIFT";
+                        break;
+                }
+                // Showing selected spinner item
+                //Toast.makeText(parent.getContext(), "Selected Mode: " + sMode, Toast.LENGTH_LONG).show();
+                break;
+
+            case R.id.remote_spinner:
+                String rMode = parent.getItemAtPosition(pos).toString();
+                switch (rMode) {
+                    case "Co-located":
+                        RemoteMode = "Co-located";
+                        break;
+                    case "Remote Edge":
+                        RemoteMode = "Remote Edge";
+                        break;
+                    case "Cloud":
+                        RemoteMode = "Cloud";
+                        break;
+                    default:
+                        RemoteMode = "Co-located";
+                        break;
+                }
+                // Showing selected spinner item
+                //Toast.makeText(parent.getContext(), "Selected Remote: " + rMode, Toast.LENGTH_LONG).show();
+                break;
         }
+
+    //}
 
     }
 
@@ -251,6 +290,8 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         //MIN_MATCH_COUNT = 60;
         //ResolutionDivider = 2.4;
         operatingMode = "SIFT";
+        RemoteMode = "Co-located";
+
     }
 
     private class StableArrayAdapter extends ArrayAdapter<ReferenceObject> {
@@ -392,9 +433,9 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         if (singletonAppList.getList().isEmpty()) {
             writeToTextView(firstMessage);
             return false;
-        } else if (networkSwitch.isChecked() && (remoteUrl == null)) {// || !URLUtil.isValidUrl(remoteUrl)) ) {
+        /*} else if (networkSwitch.isChecked() && (remoteUrl == null)) {// || !URLUtil.isValidUrl(remoteUrl)) ) {
             writeToTextView("No or Invalid URL for remote.");
-            return false;
+            return false;*/
         } else {
             writeToTextView(singletonAppList.getListText());
             return true;
@@ -481,12 +522,15 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
     public void mrNullIntent(View view){
 
-        //if (!checkList()) return;
+        if (!checkList()) generateFixedApps(1); //return; is default
 
-        Intent detectorIntent = new Intent(this, MrNullActivity.class);
+        Intent detectorIntent = new Intent(this, MrIfipNullActivity.class);
         detectorIntent.putExtra("InputSize", inputSize);
         detectorIntent.putExtra("FastDebug", FastDebug);
-        startActivity(detectorIntent);
+        detectorIntent.putExtra("OperatingMode", operatingMode);
+
+        backStack.addNextIntentWithParentStack(detectorIntent);
+        backStack.startActivities();
 
     }
 
@@ -527,6 +571,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
         detectorIntent.putExtra("NetworkMode",NetworkMode);
         detectorIntent.putExtra("OperatingMode", operatingMode);
         detectorIntent.putExtra("RemoteURL",remoteUrl);
+        detectorIntent.putExtra("RemoteMode", RemoteMode);
         detectorIntent.putExtra("InputSize", inputSize);
         detectorIntent.putExtra("FastDebug", FastDebug);
 
@@ -555,11 +600,13 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
         //if (!checkListDemo()) return;
         // Instead of using the checkList module, we generate our own list instead with size 1.
-        generateFixedApps(1);
+/*        generateFixedApps(1);
 
         String captureSizeViewText = captureSizeView.getText().toString();
         if (captureSizeViewText.isEmpty()) inputSize = 300;
-        else inputSize = Integer.valueOf(captureSizeViewText);
+        else inputSize = Integer.valueOf(captureSizeViewText);*/
+
+        if (!checkList()) generateFixedApps(1); //return; is default
 
         Intent detectorIntent = new Intent(this, MrIfipDetectorActivity.class);
         detectorIntent.putExtra("InputSize", inputSize);

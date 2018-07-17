@@ -163,10 +163,6 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
     private OverlayView augmentedOverlay;
     private Augmenter augmenter;
 
-    static {
-        LOGGER.i("DataGathering, OperatingMode, Image number, No of apps, Size, Total Time, Detection Time");
-    }
-
     @Override
     public void onPreviewSizeChosen(final Size size, final int rotation) {
         final float textSizePx =
@@ -184,69 +180,80 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
         tracker = new MultiBoxTracker(this);
         augmenter = new Augmenter();
 
-        // setting up a TF detector (a TF OD type)
         int cropSize = TF_OD_API_INPUT_SIZE;
-        if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.YOLO) {
-            detector =
-                    TensorFlowYoloDetector.create(
-                            getAssets(),
-                            YOLO_MODEL_FILE,
-                            inputSize,//YOLO_INPUT_SIZE,
-                            YOLO_INPUT_NAME,
-                            YOLO_OUTPUT_NAMES,
-                            YOLO_BLOCK_SIZE);
-            inputSize = YOLO_INPUT_SIZE;
-        } else if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.MULTIBOX) {
-            detector =
-                    TensorFlowMultiBoxDetector.create(
-                            getAssets(),
-                            MB_MODEL_FILE,
-                            MB_LOCATION_FILE,
-                            MB_IMAGE_MEAN,
-                            MB_IMAGE_STD,
-                            MB_INPUT_NAME,
-                            MB_OUTPUT_LOCATIONS_NAME,
-                            MB_OUTPUT_SCORES_NAME);
-            inputSize = MB_INPUT_SIZE;
-        } else {
-            try {
-                detector = TensorFlowObjectDetectionAPIModel.create(
-                        getAssets(),
-                        TF_OD_API_MODEL_FILE,
-                        TF_OD_API_LABELS_FILE,
-                        inputSize//TF_OD_API_INPUT_SIZE
-                );
-            } catch (final IOException e) {
-                LOGGER.e("Exception initializing classifier!", e);
-                Toast toast =
-                        Toast.makeText(
-                                getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
-                toast.show();
-                finish();
-            }
+        switch (operatingMode) {
+            case "TF":
+            // setting up a TF detectMarkers (a TF OD type)
+                if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.YOLO) {
+                    detector =
+                            TensorFlowYoloDetector.create(
+                                    getAssets(),
+                                    YOLO_MODEL_FILE,
+                                    inputSize,//YOLO_INPUT_SIZE,
+                                    YOLO_INPUT_NAME,
+                                    YOLO_OUTPUT_NAMES,
+                                    YOLO_BLOCK_SIZE);
+                    inputSize = YOLO_INPUT_SIZE;
+                } else if (MODE == MrIfipDetectorActivityWithNetwork.DetectorMode.MULTIBOX) {
+                    detector =
+                            TensorFlowMultiBoxDetector.create(
+                                    getAssets(),
+                                    MB_MODEL_FILE,
+                                    MB_LOCATION_FILE,
+                                    MB_IMAGE_MEAN,
+                                    MB_IMAGE_STD,
+                                    MB_INPUT_NAME,
+                                    MB_OUTPUT_LOCATIONS_NAME,
+                                    MB_OUTPUT_SCORES_NAME);
+                    inputSize = MB_INPUT_SIZE;
+                } else {
+                    try {
+                        detector = TensorFlowObjectDetectionAPIModel.create(
+                                getAssets(),
+                                TF_OD_API_MODEL_FILE,
+                                TF_OD_API_LABELS_FILE,
+                                inputSize//TF_OD_API_INPUT_SIZE
+                        );
+                    } catch (final IOException e) {
+                        LOGGER.e("Exception initializing classifier!", e);
+                        Toast toast =
+                                Toast.makeText(
+                                        getApplicationContext(), "Classifier could not be initialized", Toast.LENGTH_SHORT);
+                        toast.show();
+                        finish();
+                    }
+                }
+
+                break;
+
+            /**
+             * Inserted the line below for the OpenCV Detector.
+             */
+            case "SIFT":
+                siftDetector = new SiftDetector();
+                break;
+            case "ORB":
+                orbDetector = new OrbDetector();
+                break;
         }
 
-        /*// setting up a TF classifier
-        classifier =
-                TensorFlowImageClassifier.create(
-                        getAssets(),
-                        MODEL_FILE,
-                        LABEL_FILE,
-                        INPUT_SIZE,
-                        IMAGE_MEAN,
-                        IMAGE_STD,
-                        INPUT_NAME,
-                        OUTPUT_NAME);*/
+        if (NetworkMode.equals("REMOTE_PROCESS")) {
 
-        /**
-         * Inserted the line below for the OpenCV Detector.
-         */
-
-        siftDetector = new SiftDetector();
-        orbDetector = new OrbDetector();
-
-        if (NetworkMode.equals("REMOTE_PROCESS"))
+            if (remoteUrl.isEmpty()) {
+                switch (RemoteMode) {
+                    case "Co-located":
+                        remoteUrl = "150.229.118.57";
+                        break;
+                    case "Remote Edge":
+                        remoteUrl = "202.9.6.99";
+                        break;
+                    case "Cloud":
+                        remoteUrl = "13.54.2.145";
+                        break;                }
+            }
             remoteDetector = RemoteDetector.create(remoteUrl, operatingMode);
+        }
+
 
         previewWidth = size.getWidth();
         previewHeight = size.getHeight();
@@ -416,8 +423,13 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
             for (long d : detectionTimes) sum += d;
             double averageDetection = 1.0d * sum / detectionTimes.length;
 
-            LOGGER.i("DataGatheringAverage, %d, %d, %d, %f, %f",
-                    captureCount, appList.size(),inputSize, averageOverall, averageDetection);
+            sum = 0;
+            for (long d : runtimeMemory) sum += d;
+            double averageMemory = 1.0d * sum / runtimeMemory.length;
+
+            LOGGER.i("DataGatheringAverage, %d, %d, %f, %f, %f",
+                    appList.size(),inputSize, averageOverall, averageDetection,
+                    averageMemory); //utilityHit);
 
 /*            if (logWriter!=null) {
                 try {
@@ -439,7 +451,7 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
         byte[] originalLuminance = getLuminance();
 
         // Usually, this onFrame method below doesn't really happen as you would see in the toast
-        // message that appears when you start up this detector app.
+        // message that appears when you start up this detectMarkers app.
         tracker.onFrame(
                 previewWidth,
                 previewHeight,
@@ -573,7 +585,7 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
                                  * as specified by the task list (i.e. app list).
                                  */
                                 /*if (appListText.contains("TF"))
-                                    dResults = detector.recognizeImage(inputBitmap);
+                                    dResults = detectMarkers.recognizeImage(inputBitmap);
                                 if (appListText.contains("SIFT"))
                                     sResult = siftDetector.imageDetector(inputBitmap);
                                 if (appListText.contains("ORB"))
@@ -716,12 +728,19 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
 
                         final long overallTime = SystemClock.uptimeMillis() - startTime;
 
-                        LOGGER.i("DataGathering, %s_%s, %d, %d, %d, %d, %d", //%d, %d",
-                                operatingMode, NetworkMode, captureCount, appList.size(),inputSize, overallTime, detectionTime);
+                        final long usedMemInMB=(runtime.totalMemory() - runtime.freeMemory()) / 1048576L;
+                        final long maxHeapSizeInMB=runtime.maxMemory() / 1048576L;
+                        //final long availHeapSizeInMB = maxHeapSizeInMB - usedMemInMB;
+
+                        LOGGER.i("DataGathering, %s, %d, %d, %d, %d, %d, %d (of %d)", //%d, %d",
+                                operatingMode, captureCount, appList.size(),inputSize, overallTime, detectionTime, usedMemInMB, maxHeapSizeInMB);
+                        //utilityHit, secrecyHit);
 
                         if (fastDebug) {
-                            overallTimes[captureCount] = overallTime;
-                            detectionTimes[captureCount] = detectionTime;
+                            final int count = Math.min(captureCount, CAPTURE_TIMEOUT);
+                            overallTimes[count] = overallTime;
+                            detectionTimes[count] = detectionTime;
+                            runtimeMemory[count] = usedMemInMB;
                         }
 
 /*                        if (logWriter!=null) {

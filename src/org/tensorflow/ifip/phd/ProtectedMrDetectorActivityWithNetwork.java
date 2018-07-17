@@ -172,7 +172,7 @@ public class ProtectedMrDetectorActivityWithNetwork extends MrCameraActivity {
         tracker = new MultiBoxTracker(this);
         augmenter = new Augmenter();
 
-        // setting up a TF detector (a TF OD type)
+        // setting up a TF detectMarkers (a TF OD type)
         int cropSize = TF_OD_API_INPUT_SIZE;
         if (MODE == ProtectedMrDetectorActivityWithNetwork.DetectorMode.YOLO) {
             detector =
@@ -417,7 +417,7 @@ public class ProtectedMrDetectorActivityWithNetwork extends MrCameraActivity {
         byte[] originalLuminance = getLuminance();
 
         // Usually, this onFrame method below doesn't really happen as you would see in the toast
-        // message that appears when you start up this detector app.
+        // message that appears when you start up this detectMarkers app.
         tracker.onFrame(
                 previewWidth,
                 previewHeight,
@@ -517,7 +517,7 @@ public class ProtectedMrDetectorActivityWithNetwork extends MrCameraActivity {
                             LOGGER.i("Doing app: " + app.toString());
 
                             /*if (tfResults.isEmpty()) {
-                                tfResults = detector.recognizeImage(croppedBitmap);
+                                tfResults = detectMarkers.recognizeImage(croppedBitmap);
                             }
 
                             if (cvResult.getTitle() == "") {

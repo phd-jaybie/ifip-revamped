@@ -169,7 +169,7 @@ public class MrThreadedDetectorActivity extends MrThreadedCameraActivity impleme
 
         sProcessManager = ProcessManager.getInstance();
 
-        // setting up a TF detector (a TF OD type)
+        // setting up a TF detectMarkers (a TF OD type)
         int cropSize = TF_OD_API_INPUT_SIZE;
         if (MODE == DetectorMode.YOLO) {
             detector =
@@ -193,7 +193,7 @@ public class MrThreadedDetectorActivity extends MrThreadedCameraActivity impleme
                             MB_OUTPUT_LOCATIONS_NAME,
                             MB_OUTPUT_SCORES_NAME);
             cropSize = MB_INPUT_SIZE;
-            LOGGER.i("Created detector using Multi-box Detector");
+            LOGGER.i("Created detectMarkers using Multi-box Detector");
         } else {
             try {
                 detector = TensorFlowObjectDetectionAPIModel.create(
@@ -203,7 +203,7 @@ public class MrThreadedDetectorActivity extends MrThreadedCameraActivity impleme
                         inputSize//TF_OD_API_INPUT_SIZE
                         );
                 cropSize = TF_OD_API_INPUT_SIZE;
-                LOGGER.i("Created detector using Object Detector");
+                LOGGER.i("Created detectMarkers using Object Detector");
             } catch (final IOException e) {
                 LOGGER.e("Exception initializing classifier!", e);
                 Toast toast =
@@ -395,7 +395,7 @@ public class MrThreadedDetectorActivity extends MrThreadedCameraActivity impleme
         //final byte[] mBytes = getLuminance();//getImageMat();
 
         // Usually, this onFrame method below doesn't really happen as you would see in the toast
-        // message that appears when you start up this detector app.
+        // message that appears when you start up this detectMarkers app.
         tracker.onFrame(
                 previewWidth,
                 previewHeight,
@@ -472,7 +472,7 @@ public class MrThreadedDetectorActivity extends MrThreadedCameraActivity impleme
                     /*switch (app.getMethod().second){
                         case "MULTIBOX":
                             //detection
-                            results = detector.recognizeImage(croppedBitmap);
+                            results = detectMarkers.recognizeImage(croppedBitmap);
 
                             break;
 

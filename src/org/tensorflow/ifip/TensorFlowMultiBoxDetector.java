@@ -35,7 +35,7 @@ import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.ifip.env.Logger;
 
 /**
- * A detector for general purpose object detection as described in Scalable Object Detection using
+ * A detectMarkers for general purpose object detection as described in Scalable Object Detection using
  * Deep Neural Networks (https://arxiv.org/abs/1312.2249).
  */
 public class TensorFlowMultiBoxDetector implements Classifier {

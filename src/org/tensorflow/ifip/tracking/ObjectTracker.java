@@ -33,7 +33,7 @@ import org.tensorflow.ifip.env.Logger;
 import org.tensorflow.ifip.env.Size;
 
 /**
- * True object detector/tracker class that tracks objects across consecutive preview frames.
+ * True object detectMarkers/tracker class that tracks objects across consecutive preview frames.
  * It provides a simplified Java interface to the analogous native object defined by
  * jni/client_vision/tracking/object_tracker.*.
  *

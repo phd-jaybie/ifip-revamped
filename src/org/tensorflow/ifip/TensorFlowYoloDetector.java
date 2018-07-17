@@ -27,7 +27,7 @@ import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 import org.tensorflow.ifip.env.Logger;
 import org.tensorflow.ifip.env.SplitTimer;
 
-/** An object detector that uses TF and a YOLO model to detect objects. */
+/** An object detectMarkers that uses TF and a YOLO model to detect objects. */
 public class TensorFlowYoloDetector implements Classifier {
   private static final Logger LOGGER = new Logger();
 

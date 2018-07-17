@@ -16,9 +16,14 @@
 <resources>
     <string name="camera_error">This device doesn\'t support Camera2 API.</string>
     <string-array name="mode_array">
-        <item>Choose detection:</item>
         <item>SIFT</item>
         <item>ORB</item>
         <item>TF</item>
+        <item>MARKER</item>
+    </string-array>
+    <string-array name="remote_array">
+        <item>Co-located</item>
+        <item>Remote Edge</item>
+        <item>Cloud</item>
     </string-array>
 </resources>

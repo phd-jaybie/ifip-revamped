@@ -6,6 +6,7 @@ package org.tensorflow.ifip.phd;
  * This activity is a modification of the original TF code to be used for experimental measurements.
  */
 
+import android.app.ActivityManager;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.Canvas;
@@ -35,14 +36,13 @@ import org.tensorflow.ifip.env.BorderedText;
 import org.tensorflow.ifip.env.ImageUtils;
 import org.tensorflow.ifip.env.Logger;
 import org.tensorflow.ifip.phd.detector.cv.CvDetector;
-import org.tensorflow.ifip.phd.detector.cv.MarkerDetector;
-import org.tensorflow.ifip.phd.detector.cv.HammingDetector;
 import org.tensorflow.ifip.phd.detector.cv.OrbDetector;
 import org.tensorflow.ifip.phd.detector.cv.SiftDetector;
 import org.tensorflow.ifip.simulator.App;
 import org.tensorflow.ifip.tracking.MultiBoxTracker;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
 import java.util.List;
@@ -52,7 +52,7 @@ import java.util.Vector;
  * An activity that follows Tensorflow's demo DetectorActivity class as template and implements
  * classical visual detection using OpenCV in addition to the TF (OD) detection.
  */
-public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageAvailableListener {
+public class MrIfipNullActivity extends MrCameraActivity implements OnImageAvailableListener {
     private static final Logger LOGGER = new Logger();
 
     private int captureCount = 0;
@@ -121,9 +121,8 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
     private Classifier detector; //for TF detection
     private Classifier classifier; //for TF classification
-    private CvDetector siftDetector; //for OpenCV detection
-    private CvDetector orbDetector;
-    private MarkerDetector hammingDetector; // for 2D marker detection
+    private SiftDetector siftDetector; //for OpenCV detection
+    private OrbDetector orbDetector;
 
     private long lastProcessingTimeMs;
     private Bitmap rgbFrameBitmap = null;
@@ -222,13 +221,10 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
              * Inserted the line below for the OpenCV Detector.
              */
             case "SIFT":
-                siftDetector = SiftDetector.create();
+                siftDetector = new SiftDetector();
                 break;
             case "ORB":
-                orbDetector = OrbDetector.create();
-                break;
-            case "MARKER":
-                hammingDetector = HammingDetector.create();
+                orbDetector = new OrbDetector();
                 break;
         }
 
@@ -483,7 +479,11 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         // concurrent app that's running. Furthermore, the detection process can be
                         // performed remotely (instead of locally) by an app's associated remote
                         // supporting servers.
-                        for (final App app : appList) {
+
+                        /**
+                         * Commented-out actual processing code to do nothing. --> null
+                         */
+/*                        for (final App app : appList) {
 
                             LOGGER.i("Doing app: " + app.toString());
 
@@ -491,28 +491,25 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                             final List<Classifier.Recognition> appResults =
                                     new LinkedList<>(); // collection of results per app
-
                             List<String> objectsOfInterest = Arrays.asList(app.getObjectsOfInterest());
 
                             Integer localHit = 0;
                             Integer localSecrecyHit = 0;
 
-                            List<Classifier.Recognition> results;
-                            List<MarkerDetector.Marker> mResults;
+                            List<Classifier.Recognition> results = new ArrayList<>();
 
-                            CvDetector.Recognition result;
+                            CvDetector.Recognition result = new CvDetector.Recognition();
                             Path locationPath;
                             RectF locationRectF;
 
                             Classifier.Recognition cvDetection;
-                            LOGGER.d(operatingMode);
 
                             switch (operatingMode) {
 
                                 case "TF":
 
                                     begin = SystemClock.uptimeMillis();
-                                    results = detector.recognizeImage(inputBitmap); // no classifier
+                                    results = detectMarkers.recognizeImage(inputBitmap); // no classifier
                                     detect1 = SystemClock.uptimeMillis()-begin;
 
                                     //transformation
@@ -543,14 +540,16 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                 case "SIFT":
 
                                     begin = SystemClock.uptimeMillis();
+
                                     result = siftDetector.imageDetector(inputBitmap, app.getReference());
+
                                     detect1 = SystemClock.uptimeMillis()-begin;
 
                                     if (result == null) break;
 
                                     localHit = 1;
 
-                                    result.setTitle("SIFT");
+                                    result.setTitle(app.getName());
 
                                     locationPath = result.getLocation().first;
                                     locationPath.transform(inputToCropTransform);
@@ -561,7 +560,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                     cropToFrameTransform.mapRect(locationRectF);
 
                                     cvDetection = new Classifier.
-                                            Recognition(operatingMode, result.getTitle(),
+                                            Recognition(app.getMethod().second, result.getTitle(),
                                             minimumConfidence, result.getLocation().second);
                                     appResults.add(cvDetection);
 
@@ -570,14 +569,16 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                 case "ORB":
 
                                     begin = SystemClock.uptimeMillis();
+
                                     result = orbDetector.imageDetector(inputBitmap, app.getReference());
+
                                     detect1 = SystemClock.uptimeMillis()-begin;
 
                                     if (result == null) break;
 
                                     localHit = 1;
 
-                                    result.setTitle("ORB");
+                                    result.setTitle(app.getName());
 
                                     locationPath = result.getLocation().first;
                                     locationPath.transform(inputToCropTransform);
@@ -588,39 +589,9 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                     cropToFrameTransform.mapRect(locationRectF);
 
                                     cvDetection = new Classifier.
-                                            Recognition(operatingMode, result.getTitle(),
+                                            Recognition(app.getMethod().second, result.getTitle(),
                                             minimumConfidence, result.getLocation().second);
                                     appResults.add(cvDetection);
-
-                                    break;
-
-                                case "MARKER":
-
-                                    begin = SystemClock.uptimeMillis();
-                                    mResults = hammingDetector.detectMarkers(inputBitmap);
-
-                                    detect1 = SystemClock.uptimeMillis()-begin;
-
-                                    LOGGER.i("%d markers detected.", mResults.size());
-
-                                    //transformation
-                                    for (final MarkerDetector.Marker mResult : mResults) {
-
-                                        localHit = 1;
-
-                                        locationPath = mResult.contourToPath();
-                                        locationPath.transform(inputToCropTransform);
-                                        canvas.drawPath(locationPath, paint);
-
-                                        locationRectF = mResult.contourToRect();
-                                        inputToCropTransform.mapRect(locationRectF);
-                                        cropToFrameTransform.mapRect(locationRectF);
-
-                                        Classifier.Recognition markerDetection = new Classifier.
-                                                Recognition(operatingMode, mResult.getId(),
-                                                minimumConfidence, locationRectF);
-                                        appResults.add(markerDetection);
-                                    }
 
                                     break;
 
@@ -637,7 +608,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                             final Integer previousSecretHit = secrecyHit;
                             secrecyHit = previousSecretHit + localSecrecyHit;
 
-                            /*app.addCallback(
+                            *//*app.addCallback(
                                     new App.AppCallback() {
                                         @Override
                                         public void appCallback() {
@@ -646,11 +617,11 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                             }
                                         }
                                     }
-                            );*/
+                            );*//*
 
                             mappedRecognitions.addAll(appResults);
+                        }*/
 
-                        }
 
                         lastProcessingTimeMs = SystemClock.uptimeMillis() - startTime;
 
@@ -664,8 +635,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                         final long overallTime = SystemClock.uptimeMillis() - startTime;
 
-                        //final long usedMemInMB=(runtime.totalMemory() - runtime.freeMemory()) / 1048576L;
-                        final long usedMemInMB=(runtime.maxMemory() - runtime.freeMemory()) / 1048576L;
+                        final long usedMemInMB=(runtime.totalMemory() - runtime.freeMemory()) / 1048576L;
                         final long maxHeapSizeInMB=runtime.maxMemory() / 1048576L;
                         //final long availHeapSizeInMB = maxHeapSizeInMB - usedMemInMB;
 

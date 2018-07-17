@@ -17,6 +17,7 @@
 package org.tensorflow.ifip;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.app.Fragment;
 import android.app.TaskStackBuilder;
 import android.content.Context;
@@ -64,6 +65,8 @@ import org.tensorflow.ifip.simulator.SingletonAppList;
 public abstract class MrCameraActivity extends FragmentActivity
     implements OnImageAvailableListener, Camera.PreviewCallback, NetworkListener {
 
+  protected static Runtime runtime;
+
   protected static Integer utilityHit;
   protected static final String[] secretObjects = new String[]
           {"person", "bed", "toilet", "laptop", "cell phone"}; //high sensitivity objects
@@ -86,6 +89,7 @@ public abstract class MrCameraActivity extends FragmentActivity
   protected static final int INSTANCE_TIMEOUT = 10;
   protected static long[] overallTimes;
   protected static long[] detectionTimes;
+  protected static long[] runtimeMemory;
 
   private boolean useCamera2API;
   private boolean isProcessingFrame = false;
@@ -110,6 +114,7 @@ public abstract class MrCameraActivity extends FragmentActivity
 
   // This is used by the MrCameraActivity child with networking.
   protected static String NetworkMode = "";
+  protected static String RemoteMode = "";
   protected static String remoteUrl = "";
   protected static boolean fastDebug = false;
 
@@ -156,8 +161,14 @@ public abstract class MrCameraActivity extends FragmentActivity
     }
   }
 
+  static {
+    LOGGER.i("DataGathering, OperatingMode, Image number, No of apps, Size, Total Time, Detection Time, UsedMB (of TotalMB)");
+  }
+
   @Override
   protected void onCreate(final Bundle savedInstanceState) {
+
+    runtime = Runtime.getRuntime();
 
     inputSize = getIntent().getIntExtra("InputSize",240);
     fastDebug = getIntent().getBooleanExtra("FastDebug", false);
@@ -192,13 +203,15 @@ public abstract class MrCameraActivity extends FragmentActivity
 
     MIN_MATCH_COUNT = 10*Math.round(30*inputSize/4032);
 
-    //overallTimes = new long[CAPTURE_TIMEOUT+1];
-    //detectionTimes = new long[CAPTURE_TIMEOUT+1];
+    overallTimes = new long[CAPTURE_TIMEOUT+1];
+    detectionTimes = new long[CAPTURE_TIMEOUT+1];
+    runtimeMemory = new long[CAPTURE_TIMEOUT+1];
 
     // creating an instance of the MrObjectManager
     if (manager == null) manager = new MrObjectManager();
 
     NetworkMode = getIntent().getStringExtra("NetworkMode");
+    RemoteMode = getIntent().getStringExtra("RemoteMode");
 
     try {
       if (NetworkMode.equals("REMOTE_PROCESS")) {

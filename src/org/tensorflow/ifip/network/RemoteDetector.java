@@ -40,7 +40,7 @@ public class RemoteDetector implements Classifier {
 
         urlString = "http://" + remoteUrl + ":8081"; // for user-input URL
         operatingMode = detectionMode;
-        if (remoteUrl.isEmpty()) urlString = "http://150.229.118.255:8081"; // co-located edge server
+        //if (remoteUrl.isEmpty()) urlString = "http://150.229.118.255:8081"; // co-located edge server
         //urlString = "http://13.211.118.53:8081"; // remote cloud server
 
         return detector;

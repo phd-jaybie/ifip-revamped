@@ -39,6 +39,11 @@ public class OrbDetector implements CvDetector{
 
     private static final Logger LOGGER = new Logger();
 
+    public static CvDetector create() {
+        final OrbDetector d = new OrbDetector();
+        return d;
+    }
+
     @Override
     public QueryImage imageDetector(Bitmap bitmap){
 

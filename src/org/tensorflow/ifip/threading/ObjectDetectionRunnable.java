@@ -68,10 +68,10 @@ public class ObjectDetectionRunnable implements Runnable {
 
     }
 
-    ObjectDetectionRunnable(TaskRunnableObjectDetectionMethods processTask){//, Bitmap inputBitmap, Classifier detector) {
+    ObjectDetectionRunnable(TaskRunnableObjectDetectionMethods processTask){//, Bitmap inputBitmap, Classifier detectMarkers) {
         mProcessTask = processTask;
         //mInputBitmap = inputBitmap;
-        //mDetector = detector;
+        //mDetector = detectMarkers;
     }
 
     @Override

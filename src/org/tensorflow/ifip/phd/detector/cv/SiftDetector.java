@@ -35,10 +35,16 @@ import java.util.List;
 import static org.tensorflow.ifip.MrCameraActivity.MIN_MATCH_COUNT;
 
 public class SiftDetector implements CvDetector{
+
     private static final Logger LOGGER = new Logger();
 
     // This is a separate imageDetector which only extracts the OpenCV query image matrix and
     // associated descriptor and keypoint matrix using SIFT.
+    public static CvDetector create(){
+        final SiftDetector d = new SiftDetector();
+        return d;
+    }
+
     @Override
     public QueryImage imageDetector(Bitmap bitmap){
 
