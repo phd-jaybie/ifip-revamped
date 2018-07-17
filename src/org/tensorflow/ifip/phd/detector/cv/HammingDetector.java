@@ -13,6 +13,7 @@ import org.opencv.core.Mat;
 import org.opencv.core.MatOfInt;
 import org.opencv.core.MatOfPoint;
 import org.opencv.core.MatOfPoint2f;
+import org.opencv.core.Point;
 import org.opencv.core.Size;
 import org.opencv.imgproc.Imgproc;
 import org.tensorflow.ifip.env.Logger;
@@ -20,6 +21,7 @@ import org.tensorflow.ifip.env.Logger;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
+import java.util.Vector;
 
 public class HammingDetector implements MarkerDetector {
 
@@ -71,7 +73,7 @@ public class HammingDetector implements MarkerDetector {
         List<MatOfPoint> contours = new ArrayList<>();
         Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_NONE);
 
-        double minContourLength = (Math.min(width, height)) / 30.0;
+        double minContourLength = (Math.min(width, height)) / 50.0;
         double maxContourLength = 2*(width + height);
 
         List<MatOfPoint> goodContours = new ArrayList<>();
@@ -79,26 +81,41 @@ public class HammingDetector implements MarkerDetector {
         for (MatOfPoint contour : contours) {
             MatOfPoint2f curve = new MatOfPoint2f(contour.toArray());
             double contourLength = Imgproc.arcLength(curve, true);
-            if (contourLength > minContourLength && contourLength<=maxContourLength)
+            if (contourLength > minContourLength) //&& contourLength<=maxContourLength)
                 goodContours.add(contour); // len(contour) --> contour.toList().size()
         } //getting long enough contours
 
-        int warpedSize = 49;
+        double warpedSize = 49;
 
-        Mat canonicalMarkerCoords = new Mat(4,1, CvType.CV_32S);
-        canonicalMarkerCoords.put(0, 0, new int[]{0, 0});
-        canonicalMarkerCoords.put(1, 0, new int[]{warpedSize - 1, 0});
-        canonicalMarkerCoords.put(2, 0, new int[]{warpedSize - 1, warpedSize - 1});
-        canonicalMarkerCoords.put(3, 0, new int[]{0, warpedSize - 1});
+        //canonical_marker_coords = np.array(((0, 0),
+        //        (warped_size - 1, 0),
+        //        (warped_size - 1, warped_size - 1),
+        //        (0, warped_size - 1)),
+        //        dtype='float32')
+        List<Point> points = new ArrayList<>();
+        points.add(new Point(0,0));
+        points.add(new Point(warpedSize - 1, 0));
+        points.add(new Point(warpedSize - 1, warpedSize - 1));
+        points.add(new Point(0, warpedSize - 1));
+
+        MatOfPoint canonicalMarkerCoords = new MatOfPoint();
+        canonicalMarkerCoords.fromList(points);
+
+//        Mat canonicalMarkerCoords = new Mat(4,1, CvType.CV_32FC2);
+//        canonicalMarkerCoords.put(0, 0, new double[]{0, 0});
+//        canonicalMarkerCoords.put(1, 0, new double[]{warpedSize - 1, 0});
+//        canonicalMarkerCoords.put(2, 0, new double[]{warpedSize - 1, warpedSize - 1});
+//        canonicalMarkerCoords.put(3, 0, new double[]{0, warpedSize - 1});
 
         //MatOfInt canonicalMarkerCoords = new MatOfInt(canonicalMarkerCoordsM);
+        //LOGGER.i("Canonical coords %S", canonicalMarkerCoords.toList().toString());
 
         LOGGER.i("Number of good contours: %d (%d)", goodContours.size(), contours.size());
-        //LOGGER.i("CanonicalMarkerCoords: %s", canonicalMarkerCoords.toList().toString());
+
+        //MatOfInt cI = new MatOfInt(canonicalMarkerCoords);
+        //LOGGER.i("CanonicalMarkerCoords: %s", cI.toList().toString());
 
         for (final MatOfPoint contour : goodContours) {
-
-            //LOGGER.i("Contour: %s", contour.toList().toString());
 
             // python: approx_curve = cv2.approxPolyDP(contour, len(contour) * 0.01, True)
             MatOfPoint2f curve = new MatOfPoint2f(contour.toArray());
@@ -107,9 +124,11 @@ public class HammingDetector implements MarkerDetector {
             //LOGGER.i("ContourLength = %f (%f)", contourLength, minContourLength);
 
             MatOfPoint2f approxCurve = new MatOfPoint2f();
-            Imgproc.approxPolyDP(curve, approxCurve,
-                    0.1*contourLength, true); //len(contour) --> contour.toList().size()
 
+            double epsilon = 0.01*contour.toList().size(); //len(contour) --> contour.toList().size() OR contourLength
+
+            Imgproc.approxPolyDP(curve, approxCurve,
+                    epsilon, true);
 
             // python: if not (len(approx_curve) == 4 and cv2.isContourConvex(approx_curve)): continue
             // len(approxCurve) gets the number of elements of the matrix which should be always 4.
@@ -117,18 +136,24 @@ public class HammingDetector implements MarkerDetector {
             //LOGGER.i("ApproxCurve (List) length: %d",approxCurve.toList().size());
             //LOGGER.i("ApproxCurve (Array) length: %d",approxCurve.toArray().length);
 
-            if ((approxCurve.toArray().length != 4) || (!Imgproc.isContourConvex(contour)))
-                continue;
+            if ((approxCurve.toArray().length > 20) ||
+                    (approxCurve.toArray().length < 4) ||
+                    (!Imgproc.isContourConvex(contour))) continue;
 
-            LOGGER.i("ApproxCurve: %s",approxCurve.toList().toString());
+            double approxContourLength = Imgproc.arcLength(approxCurve, true);
+            LOGGER.i("ApproxCurve: %f, %s", approxContourLength, approxCurve.toList().toString());
 
             // python: sorted_curve = array(cv2.convexHull(approx_curve, clockwise=False), dtype='float32')
             MatOfInt sortedCurve = new MatOfInt();
             MatOfPoint approxCurveF1 = new MatOfPoint();
-            approxCurve.convertTo(approxCurveF1, CvType.CV_32S);
-            Imgproc.convexHull(approxCurveF1, sortedCurve, false);
+            approxCurve.convertTo(approxCurveF1,CvType.CV_32S);
 
-            LOGGER.i("SortedCurve: %s", sortedCurve.toList().toString());
+            Imgproc.convexHull(approxCurveF1, sortedCurve, false);
+            LOGGER.i("Converted ApproxCurve: %s", approxCurveF1.toArray().toString());
+
+            LOGGER.i("SortedCurve: [%dx%d] %s", sortedCurve.rows(),
+                    sortedCurve.cols(),
+                    sortedCurve.toList().toString());
 
             // python: persp_transf = cv2.getPerspectiveTransform(sorted_curve, canonical_marker_coords)
             Mat perspectiveTransform = Imgproc.getPerspectiveTransform(sortedCurve, canonicalMarkerCoords);
@@ -159,8 +184,8 @@ public class HammingDetector implements MarkerDetector {
                 for (int col = 0; col < 7; col++) {
                     Mat subMat = warpedBin.submat(row * 7, row * 7 + 7, col * 7, col * 7 + 7);
 
-                    MatOfInt subMatInt = new MatOfInt(CvType.CV_32S);
-                    subMat.convertTo(subMatInt, CvType.CV_32S);
+                    MatOfInt subMatInt = new MatOfInt(CvType.CV_32FC2);
+                    subMat.convertTo(subMatInt, CvType.CV_32FC2);
 
                     //getting mean at axis 3: as if *.mean(axis=3)
                     MatOfInt meanSub3 = new MatOfInt();
