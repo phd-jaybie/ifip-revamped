@@ -50,6 +50,8 @@ public interface MarkerDetector {
 
             List<Point> contourPoints = this.contour.toList();
 
+            if (contourPoints.size()<4) return path;
+
             path.moveTo((float) contourPoints.get(0).x, (float) contourPoints.get(0).y);
             path.lineTo((float) contourPoints.get(1).x, (float) contourPoints.get(1).y);
             path.lineTo((float) contourPoints.get(2).x, (float) contourPoints.get(2).y);
@@ -63,6 +65,9 @@ public interface MarkerDetector {
             RectF location = new RectF();
 
             List<Point> contourPoints = this.contour.toList();
+
+            if (contourPoints.size()<4) return location;
+
             float[] xValues = {(float) contourPoints.get(0).x,
                     (float) contourPoints.get(1).x,
                     (float) contourPoints.get(2).x,

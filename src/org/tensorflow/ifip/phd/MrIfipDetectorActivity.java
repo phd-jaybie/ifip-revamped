@@ -135,6 +135,9 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
     private long timestamp = 0;
 
+    private int processSizeHeight = DESIRED_PREVIEW_SIZE.getHeight();
+    private int processSizeWidth = DESIRED_PREVIEW_SIZE.getWidth();
+
     private Matrix frameToCropTransform;
     private Matrix cropToFrameTransform;
 
@@ -166,6 +169,9 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
         inputSizeWidth = size.getWidth();
         inputSizeHeight = size.getHeight();
         inputSize = Math.min(inputSizeWidth, inputSizeHeight);
+
+        processSizeHeight = inputSize;
+        processSizeWidth = inputSize;
 
         tracker = new MultiBoxTracker(this);
 
@@ -333,7 +339,7 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                         lines.add("Running " + singletonAppList.getList().size() + " apps");
                         lines.add("Frame: " + previewWidth + "x" + previewHeight);
-                        lines.add("Processed Frame: " + inputSize + "x" + inputSize);
+                        lines.add("Processed Frame: " + processSizeHeight + "x" + processSizeWidth);
                         lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
                         lines.add("View: " + canvas.getWidth() + "x" + canvas.getHeight());
                         //lines.add("Rotation: " + sensorOrientation);
@@ -596,8 +602,12 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                                 case "MARKER":
 
+                                    processSizeHeight = rgbFrameBitmap.getHeight();
+                                    processSizeWidth = rgbFrameBitmap.getWidth();
+
+                                    // We are preserving the processing
                                     begin = SystemClock.uptimeMillis();
-                                    mResults = hammingDetector.detectMarkers(inputBitmap);
+                                    mResults = hammingDetector.detectMarkers(rgbFrameBitmap);
 
                                     detect1 = SystemClock.uptimeMillis()-begin;
 
@@ -609,12 +619,12 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                                         localHit = 1;
 
                                         locationPath = mResult.contourToPath();
-                                        locationPath.transform(inputToCropTransform);
+                                        locationPath.transform(frameToCropTransform);
                                         canvas.drawPath(locationPath, paint);
 
                                         locationRectF = mResult.contourToRect();
-                                        inputToCropTransform.mapRect(locationRectF);
-                                        cropToFrameTransform.mapRect(locationRectF);
+                                        //frameToCropTransform.mapRect(locationRectF);
+                                        //cropToFrameTransform.mapRect(locationRectF);
 
                                         Classifier.Recognition markerDetection = new Classifier.
                                                 Recognition(operatingMode, mResult.getId(),
@@ -669,8 +679,10 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         final long maxHeapSizeInMB=runtime.maxMemory() / 1048576L;
                         //final long availHeapSizeInMB = maxHeapSizeInMB - usedMemInMB;
 
-                        LOGGER.i("DataGathering, %s, %d, %d, %d, %d, %d, %d (of %d)", //%d, %d",
-                                operatingMode, captureCount, appList.size(),inputSize, overallTime, detectionTime, usedMemInMB, maxHeapSizeInMB);
+                        LOGGER.i("DataGathering, %s, %d, %d, %dx%d, %d, %d, %d (of %d)", //%d, %d",
+                                operatingMode, captureCount, appList.size(),
+                                processSizeHeight, processSizeWidth,
+                                overallTime, detectionTime, usedMemInMB, maxHeapSizeInMB);
                         //utilityHit, secrecyHit);
 
                         if (fastDebug) {
