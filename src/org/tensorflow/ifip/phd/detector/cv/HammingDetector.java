@@ -21,6 +21,7 @@ import org.opencv.utils.Converters;
 import org.tensorflow.ifip.env.Logger;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.List;
 import java.util.Vector;
@@ -38,16 +39,21 @@ public class HammingDetector implements MarkerDetector {
     private static Size perspectiveSize;
 
     final Integer[][] BORDER_COORDINATES = {
-            {0, 0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},{1,0},{1,6},{2,0},{2,6},{3,0},
-            {3,6},{4,0},{4,6},{5,0},{5,6},{6,0},{6,1},{6,2},{6,3},{6,4},{6,5},{6,6}
+            {0,0},{0,1},{0,2},{0,3},{0,4},{0,5},{0,6},
+            {1,0},                              {1,6},
+            {2,0},                              {2,6},
+            {3,0},                              {3,6},
+            {4,0},                              {4,6},
+            {5,0},                              {5,6},
+            {6,0},{6,1},{6,2},{6,3},{6,4},{6,5},{6,6}
     };
 
     final Integer[][] HAMMINGCODE_MARKER_POSITIONS = {
-            {1, 2}, {1, 3}, {1, 4},
-            {2, 1}, {2, 2}, {2, 3}, {2, 4}, {2, 5},
-            {3, 1}, {3, 2}, {3, 3}, {3, 4}, {3, 5},
-            {4, 1}, {4, 2}, {4, 3}, {4, 4}, {4, 5},
-            {5, 2}, {5, 3}, {5, 4}
+                      {1,2},{1,3},{1,4},
+                {2,1},{2,2},{2,3},{2,4},{2,5},
+                {3,1},{3,2},{3,3},{3,4},{3,5},
+                {4,1},{4,2},{4,3},{4,4},{4,5},
+                      {5,2},{5,3},{5,4}
     };
 
     final Integer[][] ORIENTATION_MARKER_COORDINATES = {
@@ -103,19 +109,27 @@ public class HammingDetector implements MarkerDetector {
 
         // python: contours, hierarchy = cv2.findContours(edges.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)[-2:]
         List<MatOfPoint> contours = new ArrayList<>();
-        Imgproc.findContours(edges, contours, new Mat(), Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
+        Mat hierarchy = new Mat();
+        Imgproc.findContours(edges, contours, hierarchy, Imgproc.RETR_TREE, Imgproc.CHAIN_APPROX_SIMPLE);
 
         double minContourLength = (Math.min(width, height)) / 50.0;
 
         List<MatOfPoint> goodContours = new ArrayList<>();
+
+        double maxContourArea = 0;
 
         for (MatOfPoint contour : contours) {
             //MatOfPoint2f curve = new MatOfPoint2f(contour.toArray());
             //double contourLength = Imgproc.arcLength(curve, true);
             //final MatOfPoint2f curve = new MatOfPoint2f(contour.toArray());
 
-            if (Imgproc.contourArea(contour) >=  2*minContourLength*minContourLength) {
-                goodContours.add(contour); // len(contour) --> contour.toList().size() //&& contourLength<=maxContourLength)
+            double contourArea = Imgproc.contourArea(contour);
+            // len(contour) --> contour.toList().size() //&& contourLength<=maxContourLength)
+            if (contourArea >=  2*minContourLength*minContourLength) {
+                if (contourArea > maxContourArea) {
+                    maxContourArea = contourArea;
+                    goodContours.add(0,contour);
+                } else goodContours.add(contour);
             }
 
         } //getting long enough contours
@@ -154,6 +168,7 @@ public class HammingDetector implements MarkerDetector {
 
                 // python: sorted_curve = array(cv2.convexHull(approx_curve, clockwise=False), dtype='float32')
                 sortedCurve = sortCurve(approxCurvef1);
+                int decodedMarker;
 
                 // python: persp_transf = cv2.getPerspectiveTransform(sorted_curve, canonical_marker_coords)
                 Mat sortedCurveM = Converters.vector_Point2f_to_Mat(sortedCurve.toList());
@@ -174,6 +189,7 @@ public class HammingDetector implements MarkerDetector {
                 Imgproc.threshold(warpedGray, warpedBin, 127, 255, Imgproc.THRESH_BINARY);
 
                 Boolean[][] marker = new Boolean[7][7];
+                //Mat markerMat = new Mat(7,7,CvType.CV_32S);
 
                 // python: marker = marker.mean(axis=3).mean(axis=1)
                 // python: marker[marker < 127] = 0
@@ -196,19 +212,17 @@ public class HammingDetector implements MarkerDetector {
                         int axis1Sum = 0;
                         for (double mean3 : meanSub3) axis1Sum += mean3;
 
-                        if (axis1Sum / 7.0 < 127)
+                        if (axis1Sum / 7.0 < 127) {
                             marker[row][col] = false; // as if python: marker[marker < 127] = 0
-                        else
+                            //markerMat.put(row, col, new int[]{0});
+                        } else {
                             marker[row][col] = true; // as if python: marker[marker >= 127] = 1
+                            //markerMat.put(row, col, new int[]{1});
+                        }
                     }
                 }
 
-                //            if (Imgproc.isContourConvex(approxCurvef1))
-                //                markerId = "Convex: " + approxCurve.toList().size() + " corners";
-                //            else
-                //                markerId = "Non-Convex: " + approxCurve.toList().size() + " corners";
-
-                  try {
+                try {
                     // python: marker = validate_and_turn(marker)
                     Boolean[][] validatedMarker = validateAndTurn(marker);
 
@@ -216,12 +230,12 @@ public class HammingDetector implements MarkerDetector {
                     final BitSet hammingCode = extractHammingCode(validatedMarker);
 
                     // python: marker_id = int(decode(hamming_code), 2)
-                    //final int markerId = decode(hammingCode);
-                      markerId = hammingCode.toString();
-
-                      LOGGER.i("Contour#: %d, MarkerId: %s", counter, markerId);
-                    //python: markers_list.append(HammingMarker(id=marker_id, contours=approx_curve))
-                    //markers.add(new Marker(markerId, approxCurve));
+                    if (!hammingCode.isEmpty()) {
+                        decodedMarker = decode(hammingCode);
+                        markerId = "ID: " + decodedMarker;
+                        LOGGER.i("Contour#: %d, %s", counter, markerId);
+                        markers.add(new Marker(markerId, approxCurve));
+                    }
 
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -229,9 +243,9 @@ public class HammingDetector implements MarkerDetector {
 
             } catch (Exception e) {
                 e.printStackTrace();
-            } finally {
-                markers.add(new Marker(markerId, approxCurve));
-            }
+            } /*finally {
+
+            }*/
         }
 
         return markers;
@@ -281,7 +295,8 @@ public class HammingDetector implements MarkerDetector {
         // python: if marker[crd[0], crd[1]] != 0.0:
         // python: raise ValueError('Border contians not entirely black parts.')
         for (Integer[] borderPos: BORDER_COORDINATES) {
-            if (!marker[borderPos[0]][borderPos[1]]) {
+            if (marker[borderPos[0]][borderPos[1]]) {
+                LOGGER.d("borderPos, %s -> marker: %s", Arrays.deepToString(borderPos), marker[borderPos[0]][borderPos[1]].toString());
                 throw new Exception("Border contains not entirely black parts.");
             }
         }
@@ -289,7 +304,7 @@ public class HammingDetector implements MarkerDetector {
         //# search for the corner marker for orientation and make sure, there is only 1
         // python: orientation_marker = None
         // for crd in ORIENTATION_MARKER_COORDINATES:
-        Integer[] orientationMarker = new Integer[2];
+        Integer[] orientationMarker = new Integer[]{0,0};
 
         for (Integer[] orientationPos: ORIENTATION_MARKER_COORDINATES) {
             //marker_found = False
@@ -300,9 +315,9 @@ public class HammingDetector implements MarkerDetector {
             if (marker[orientationPos[0]][orientationPos[1]]) markerFound = true;
 
             //if marker_found and orientation_marker:
-            if (markerFound && orientationMarker[0]!=null) {
+            if (markerFound && orientationMarker[0]!=0) {
                 //raise ValueError('More than 1 orientation_marker found.')
-g                throw new Exception("More than 1 orientation_marker found.");
+                throw new Exception("More than 1 orientation_marker found.");
             } else if (markerFound) { //elif marker_found:
                 //orientation_marker = crd
                 orientationMarker = orientationPos;
@@ -326,10 +341,14 @@ g                throw new Exception("More than 1 orientation_marker found.");
         else if (orientationMarker[0] == 5 && orientationMarker[1] ==1) rotation = 3;
 
         //marker = rot90(marker, k=rotation)
+
         validatedMarker = rotateN(marker, rotation);
 
         //return marker
-        LOGGER.d("Successful validate marker.");
+        LOGGER.d("Successful marker: %s \nRotated marker: %s \nrotation = %d",
+                Arrays.deepToString(marker),
+                Arrays.deepToString(validatedMarker),
+                rotation);
         return validatedMarker;
     }
 
@@ -359,6 +378,7 @@ g                throw new Exception("More than 1 orientation_marker found.");
         for (Integer[] pos: HAMMINGCODE_MARKER_POSITIONS){
             if (marker[pos[0]][pos[1]]) hammingCode.set(bitPos, true);
             else hammingCode.set(bitPos, false);
+            bitPos++;
         }
 
         return hammingCode;
@@ -376,6 +396,8 @@ g                throw new Exception("More than 1 orientation_marker found.");
             throw new Exception("Only a multiple of 7 as bits are allowed.");
         }
 
+        long codeLong = hammingCode.toLongArray()[0];
+
         //seven_bits = bits[:7]
         //uncorrected_bit_array = generate_bit_array(seven_bits)
         //corrected_bit_array = parity_correct(uncorrected_bit_array)
@@ -385,7 +407,7 @@ g                throw new Exception("More than 1 orientation_marker found.");
 
         //return decoded_code
 
-        return code;
+        return (int) codeLong;
     }
 
 }

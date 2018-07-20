@@ -158,6 +158,8 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
     private OverlayView augmentedOverlay;
     private Augmenter augmenter;
 
+    private int detectedMarkers = 0;
+
     @Override
     public void onPreviewSizeChosen(final Size size, final int rotation) {
         final float textSizePx =
@@ -337,7 +339,8 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
                         }
                         lines.add("");
 
-                        lines.add("Running " + singletonAppList.getList().size() + " apps");
+                        if (operatingMode == "MARKER") lines.add("Markers detected: " + detectedMarkers);
+                        else lines.add("Running " + singletonAppList.getList().size() + " apps");
                         lines.add("Frame: " + previewWidth + "x" + previewHeight);
                         lines.add("Processed Frame: " + processSizeHeight + "x" + processSizeWidth);
                         lines.add("Crop: " + copy.getWidth() + "x" + copy.getHeight());
@@ -611,7 +614,9 @@ public class MrIfipDetectorActivity extends MrCameraActivity implements OnImageA
 
                                     detect1 = SystemClock.uptimeMillis()-begin;
 
-                                    LOGGER.i("%d markers detected.", mResults.size());
+                                    detectedMarkers = mResults.size();
+
+                                    LOGGER.i("%d markers detected.", detectedMarkers);
 
                                     //transformation
                                     for (final MarkerDetector.Marker mResult : mResults) {
