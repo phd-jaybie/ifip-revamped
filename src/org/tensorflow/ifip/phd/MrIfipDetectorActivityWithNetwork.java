@@ -242,7 +242,7 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
             if (remoteUrl.isEmpty()) {
                 switch (RemoteMode) {
                     case "Co-located":
-                        remoteUrl = "150.229.118.57";
+                        remoteUrl = "150.229.118.82";
                         break;
                     case "Remote Edge":
                         remoteUrl = "202.9.6.99";
@@ -559,12 +559,12 @@ public class MrIfipDetectorActivityWithNetwork extends MrCameraActivity {
                                             inputToCropTransform.mapRect(location);
                                             canvas.drawRect(location, paint);
 
-                                            if (Arrays.asList(secretObjects).contains(dResult.getTitle())){
+                                            /*if (Arrays.asList(secretObjects).contains(dResult.getTitle())){
                                                 localSecrecyHit = 1;
                                                 //continue; //Don't overlay if object is secret.
                                             } else if (objectsOfInterest.contains(dResult.getTitle())){ // case 3
                                                 localHit = 1;
-                                            }
+                                            }*/
 
                                             cropToFrameTransform.mapRect(location);
                                             dResult.setLocation(location);

@@ -136,7 +136,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
 
     }
 
-    private boolean isNetworkConnected() {
+/*    private boolean isNetworkConnected() {
         ConnectivityManager connMgr = (ConnectivityManager)
                 getSystemService(Context.CONNECTIVITY_SERVICE); // 1
         NetworkInfo networkInfo = connMgr.getActiveNetworkInfo(); // 2
@@ -152,7 +152,7 @@ public class MainActivity extends Activity implements AdapterView.OnItemSelected
                     public void onClick(DialogInterface dialog, int which) {
                     }
                 });//.setIcon(android.R.drawable.ic_dialog_alert).show();
-    }
+    }*/
 
     private void initialize() {
 

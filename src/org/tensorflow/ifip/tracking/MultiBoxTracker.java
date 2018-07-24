@@ -245,6 +245,7 @@ public class MultiBoxTracker {
 
   private void processResults(
           final long timestamp, final List<Recognition> results, final byte[] originalFrame) {
+
     final List<Pair<Float, Recognition>> rectsToTrack = new LinkedList<Pair<Float, Recognition>>();
 
     screenRects.clear();
