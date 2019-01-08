@@ -117,13 +117,11 @@ public class XmlOperator {
         String name;
         String title = null;
         String type = null; // This is updated for every encountered element in the xml with "type" element.
-        float confidence = 0.6f;
+        float confidence = 0;
         float left = 0;
         float right = 0;
         float top = 0;
         float bottom = 0;
-        float x_multiplier = 1.0f;
-        float y_multiplier = 1.0f;
 
         while (parser.next() != XmlPullParser.END_TAG) {
             if (parser.getEventType() != XmlPullParser.START_TAG) {
@@ -142,21 +140,15 @@ public class XmlOperator {
                     confidence = (Float.parseFloat(conf)) / 100;
                 } else if (type.equals("cv") || type.equals("CV")) {
                     title = name;
-                    x_multiplier = x_multiplier/width;
-                    y_multiplier = y_multiplier/height;
-                } else if (type.equals("marker") || type.equals("MARKER")) {
-                    title = "MarkerID:" + name;
-                    x_multiplier = x_multiplier/width;
-                    y_multiplier = y_multiplier/height;
                 }
             } else if (parserName.equals("xmin")) {
-                left = x_multiplier*readNumber(parser, "xmin");
+                left = readNumber(parser, "xmin");
             } else if (parserName.equals("ymin")) {
-                top = y_multiplier*readNumber(parser, "ymin");
+                top = readNumber(parser, "ymin");
             } else if (parserName.equals("xmax")) {
-                right = x_multiplier*readNumber(parser, "xmax");
+                right = readNumber(parser, "xmax");
             } else if (parserName.equals("ymax")) {
-                bottom = y_multiplier*readNumber(parser, "ymax");
+                bottom = readNumber(parser, "ymax");
             } else {
                 skip(parser);
             }

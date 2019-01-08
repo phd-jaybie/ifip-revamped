@@ -359,8 +359,6 @@ public class MrDemoDetectorWithARCoreActivity extends AppCompatActivity {
                                     && iglooRenderable != null
                                     && !virtualObject.isVirtualRendered()) {
 
-                                transformableNode.setLocalPosition(new Vector3(0,0.5f,0));
-
                                 transformableNode.setRenderable(iglooRenderable);
                                 transformableNode.select();
 
@@ -371,8 +369,6 @@ public class MrDemoDetectorWithARCoreActivity extends AppCompatActivity {
                             } else if (virtualObject.getTitle() == "droid"
                                     && andyRenderable != null
                                     && !virtualObject.isVirtualRendered()) {
-
-                                transformableNode.setLocalPosition(new Vector3(0,0.5f,0));
 
                                 transformableNode.setRenderable(andyRenderable);
                                 transformableNode.select();

@@ -16,7 +16,7 @@
 -->
 
 <resources>
-    <string name="app_name">MR Demo-New</string>
+    <string name="app_name">MR Demo</string>
 
     <string name="toggle_fast_debug">Fast Debug</string>
     <string name="toggle_fixed">Fixed Apps</string>
@@ -27,7 +27,7 @@
     <string name="remote_url">Remote URL</string>
     <string name="input_size">Size (e.g. 300)</string>
 
-    <string name="activity_name_mr_main">MR Demo 2</string>
+    <string name="activity_name_mr_main">MR Demo</string>
     <string name="activity_name_mr_null">MR Null Activity</string>
     <string name="activity_name_mr_demo_detection">MR Demo Detection</string>
     <string name="activity_name_mr_demo_initialize">MR Demo Initialize</string>
