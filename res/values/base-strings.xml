@@ -16,7 +16,7 @@
 -->
 
 <resources>
-    <string name="app_name">MR Demo/IFIP</string>
+    <string name="app_name">MR Demo-New</string>
 
     <string name="toggle_fast_debug">Fast Debug</string>
     <string name="toggle_fixed">Fixed Apps</string>
@@ -27,12 +27,12 @@
     <string name="remote_url">Remote URL</string>
     <string name="input_size">Size (e.g. 300)</string>
 
-    <string name="activity_name_mr_main">IFIP Revamped</string>
+    <string name="activity_name_mr_main">MR Demo 2</string>
     <string name="activity_name_mr_null">MR Null Activity</string>
     <string name="activity_name_mr_demo_detection">MR Demo Detection</string>
-    <string name="activity_name_mr_ifip_detection">MR IFIP Detection</string>
     <string name="activity_name_mr_demo_initialize">MR Demo Initialize</string>
+    <string name="activity_name_mr_demo_arcore">MR Demo with ARCore</string>
     <string name="activity_name_mr_detection_with_abstraction">MR Detection w/ Abstraction</string>
-    <string name="activity_mr_detection_with_network">MR Detection w/ Network</string>
+    <string name="activity_mr_detection_with_object_sharing">MR Detection w/ Shared Abstraction</string>
 
 </resources>

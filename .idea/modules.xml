@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/openCVLibrary331dev/openCVLibrary331dev.iml" filepath="$PROJECT_DIR$/openCVLibrary331dev/openCVLibrary331dev.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tf-with-opencv-demo.iml" filepath="$PROJECT_DIR$/tf-with-opencv-demo.iml" />
+    </modules>
+  </component>
+</project>

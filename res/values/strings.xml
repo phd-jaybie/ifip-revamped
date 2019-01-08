@@ -15,10 +15,4 @@
 -->
 <resources>
     <string name="camera_error">This device doesn\'t support Camera2 API.</string>
-    <string-array name="mode_array">
-        <item>Choose detection:</item>
-        <item>SIFT</item>
-        <item>ORB</item>
-        <item>TF</item>
-    </string-array>
 </resources>
